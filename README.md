@@ -38,7 +38,7 @@ aws sts get-caller-identity --profile local-dev
 aws sso login --profile local-dev
 ```
 
-### 2.3 (Opcional) yq
+### 2.3 yq
 
 El script puede usar `yq` local o, si no existe, ejecuta `mikefarah/yq` en Docker.
 
@@ -46,10 +46,10 @@ El script puede usar `yq` local o, si no existe, ejecuta `mikefarah/yq` en Docke
 yq --version
 ```
 
-## 3) Estructura recomendada (Opción B)
+## 3) Estructura recomendada
 
 * **Repo A (corporativo, local):** `sdlf-main-datalake-engineering` (NO se publica)
-* **Repo B (personal):** `glue-local-runner` (este proyecto)
+* **Repo B (personal):** `glue-local-runner`
 
 Ejemplo:
 
@@ -78,7 +78,7 @@ WORKDIR /workspace
 ```
 
 Build:
-
+* **Comando para construir la imagen
 ```bash
 docker build --no-cache -t mi-glue-job:local .
 ```
@@ -87,28 +87,19 @@ docker build --no-cache -t mi-glue-job:local .
 
 ### 5.1 Variable SDLF_DIR
 
-Este runner necesita saber **dónde está tu repo SDLF en tu máquina**.
+Este runner necesita saber **dónde está el repo SDLF en la máquina**.
 
 Ejemplos:
 
-```bash
-export SDLF_DIR="/home/user/projects/sdlf-main-datalake-engineering"
+```.env
+SDLF_DIR="/home/user/projects/sdlf-main-datalake-engineering"
 ```
-
-> Tip: en VS Code puedes definir variables en el terminal integrado o en un `.env` local (no versionado).
-
-### 5.2 Variables comunes
-
-* `AWS_PROFILE` (SSO): perfil a usar, ej. `local-dev`
-* `LAYER`: `raw | stage | analytics`
-* `PIPELINE_NAME`: nombre base del pipeline/job
 
 ## 6) Ejecución
 
 Desde el repo **runner**:
 
 ```bash
-export SDLF_DIR="/home/user/projects/sdlf-main-datalake-engineering"
 AWS_PROFILE=local-dev PIPELINE_NAME=cuentas-contables-s4h LAYER=stage ./local_run.sh
 ```
 
