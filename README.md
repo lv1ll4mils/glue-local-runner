@@ -98,9 +98,9 @@ SDLF_DIR="/home/user/projects/sdlf-main-datalake-engineering"
 ## 6) Ejecución
 
 Desde el repo **runner**:
-
+* **Los parametros "LAYER" y "PELINE_NAME" se deben definir de acuerdo a la capa y Job a ejecutar:
 ```bash
-AWS_PROFILE=local-dev PIPELINE_NAME=cuentas-contables-s4h LAYER=stage ./local_run.sh
+LAYER=[layer_name] PIPELINE_NAME=[job_name] ./local_run.sh
 ```
 
 El script construye la ruta del Job:
@@ -109,20 +109,6 @@ El script construye la ruta del Job:
 <SDLF_DIR>/transforms/sdlf-engineering-${PIPELINE_NAME}-${LAYER}-job/
   sdlf-engineering-${PIPELINE_NAME}-${LAYER}-job.py
   template.yaml
-```
-
-### 6.1 Overrides (si necesitas forzar valores)
-
-Puedes sobreescribir variables sin editar `template.yaml`:
-
-```bash
-DOMAIN=my_domain \
-SHEET=abc123 \
-WORKSHEET=Hoja1 \
-RANGE=A1:Z999 \
-SECRET=my-secret \
-LAYER=raw \
-./local_run.sh
 ```
 
 ## 7) Cómo funciona (alto nivel)
@@ -166,16 +152,3 @@ LAYER=raw \
 * Si usas `.env` local, **no** lo subas a repos.
 
 ---
-
-## Apéndice: comandos de verificación
-
-```bash
-# Docker
-docker --version
-
-# AWS CLI v2
-aws --version
-
-# sesión SSO
-aws sts get-caller-identity --profile local-dev
-```
