@@ -10,17 +10,17 @@ if [ -f ".env" ]; then
   source .env
   set +a
 fi
+
 ############################################
 # Convención de perfiles locales: local-<env> (local-dev|local-test|local-prod)
-AWS_PROFILE="${AWS_PROFILE:-engineer-dev}"
+############################################
+AWS_PROFILE="${AWS_PROFILE:-[profile_name]}"
 # Identidad del job a correr (usado para resolver JOB_PATH)
-PIPELINE_NAME="${PIPELINE_NAME:-presupuesto-s4h}"
-
-# Imagen local (ya construida desde amazon/aws-glue-libs:5.0.6)
-IMAGE="${IMAGE:-mi-glue-job:local}"
-
+PIPELINE_NAME="${PIPELINE_NAME:-[job_name]}"
 # Definir LAYER si no existe
-LAYER="${LAYER:-raw}"
+LAYER="${LAYER:-[layer_name]}"
+# Imagen local (ya construida desde amazon/aws-glue-libs:4.0.0)
+IMAGE="${IMAGE:-mi-glue-job:local}"
 
 ############################################
 # Utilidades de logging

@@ -78,7 +78,7 @@ WORKDIR /workspace
 ```
 
 Build:
-* **Comando para construir la imagen
+* Comando para construir la imagen
 ```bash
 docker build --no-cache -t mi-glue-job:local .
 ```
@@ -98,9 +98,17 @@ SDLF_DIR="/home/user/projects/sdlf-main-datalake-engineering"
 ## 6) Ejecución
 
 Desde el repo **runner**:
-* **Los parametros "LAYER" y "PELINE_NAME" se deben definir de acuerdo a la capa y Job a ejecutar:
+
+### Existe dos métodos de ejecución:
+**1. Definiendo los parametros en el comando**
+* Los parametros "AWS_PROFILE" - "LAYER" y "PELINE_NAME" se deben definir de acuerdo a la capa y Job a ejecutar:
 ```bash
-LAYER=[layer_name] PIPELINE_NAME=[job_name] ./local_run.sh
+AWS_PROFILE=[profile_name] LAYER=[layer_name] PIPELINE_NAME=[job_name] ./local_run.sh
+```
+
+**2. Configurando los parámetros a nivel interno**
+```bash
+./local_run.sh
 ```
 
 El script construye la ruta del Job:
