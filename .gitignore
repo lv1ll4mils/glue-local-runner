@@ -1,0 +1,12 @@
+# Entorno local
+.env
+.env.*
+*.env
+
+# Temporales
+.tmp/
+*.log
+
+# SO / editor
+.DS_Store
+.vscode/
