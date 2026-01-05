@@ -4,6 +4,7 @@ set -euo pipefail
 ############################################
 # Configuración editable (por defecto)
 ############################################
+# shellcheck source=.env
 if [ -f ".env" ]; then
   set -a
   source .env
@@ -45,11 +46,18 @@ yq_cmd() {
   if command -v yq >/dev/null 2>&1; then
     yq "$@"
   else
+    # Convertir ruta absoluta del host a ruta relativa del contenedor
+    local args=("$@")
+    local last_arg="${args[-1]}"
+    if [[ "$last_arg" == "$SDLF_DIR"* ]]; then
+      # Reemplazar ruta del host por ruta del contenedor
+      args[-1]="${last_arg/$SDLF_DIR//workspace}"
+    fi
     docker run --rm -i \
       -v "$SDLF_DIR":/workspace:ro \
       -w /workspace \
       --pull=missing \
-      mikefarah/yq:4 "$@"
+      mikefarah/yq:4 "${args[@]}"
   fi
 }
 
@@ -82,7 +90,7 @@ export_credentials_envfile() {
 # Bootstrap Python: inyecta nivel de log justo después de crear SparkContext
 make_bootstrap(){
     # Crea el bootstrap DENTRO del repo para que Docker lo vea.
-    local dst="$1" ; local target_py="$2"
+    local dst="$1" ; local target_py="${2:-}"
     mkdir -p "$(dirname "$dst")"
     cat >"$dst" <<'PYEOF'
 import os, runpy, sys
@@ -102,6 +110,7 @@ target = os.environ["TARGET_PY"]
 sys.argv = [target] + sys.argv[1:]
 runpy.run_path(target, run_name="__main__")
 PYEOF
+    chmod +x "$dst"
     export TARGET_PY="$target_py"
 }
 
@@ -144,10 +153,8 @@ JOB_PATH="${SDLF_DIR}/${JOB_DIR}/${JOB_NAME}"
 [ -f "$JOB_PATH" ] || die "No existe JOB_PATH='$JOB_PATH'."
 
 TEMPLATE_PATH="${SDLF_DIR}/${JOB_DIR}/template.yaml"
-
 # Paths dentro del contenedor
 JOB_PATH_CONT="/workspace/${JOB_DIR}/${JOB_NAME}"
-TEMPLATE_PATH_CONT="/workspace/${JOB_DIR}/template.yaml"
 
 ############################################
 # Defaults / overrides (key-values desde template.yaml)
@@ -239,7 +246,7 @@ if [ -f "$TEMPLATE_PATH" ]; then
   YEAR_AUTO="$( printf '%s' "$YEAR_AUTO" | sed -e 's/^[[:space:]]\+//' -e 's/[[:space:]]\+$//' )"
 
   # ---------------- TOKEN_REF ----------------
-  TOKEN_STR="$( yq_cmd -r '.. | select(has("DefaultArguments")) | .DefaultArguments["--base_year"] // ""' "$TEMPLATE_PATH" | head -n1 )"
+  TOKEN_STR="$( yq_cmd -r '.. | select(has("DefaultArguments")) | .DefaultArguments["--token_key"] // ""' "$TEMPLATE_PATH" | head -n1 )"
   [ "$TOKEN_STR" = "null" ] && TOKEN_STR=""
   TOKEN_AUTO="$TOKEN_STR"
 
@@ -309,6 +316,7 @@ GLUE_WAREHOUSE_URI="${GLUE_WAREHOUSE_URI:-s3://${LAYER_BUCKET}/${DOMAIN}/${PIPEL
 # Temp runner: log4j2 + bootstrap + envfile
 ############################################
 RUN_TMP="$(mktemp -d -t glue_local_runner.XXXX)"
+chmod 755 "$RUN_TMP"
 ENVFILE="${RUN_TMP}/env.creds"
 LOG4J2_PATH_HOST="${RUN_TMP}/log4j2.properties"
 BOOTSTRAP_HOST="${RUN_TMP}/_bootstrap.py"
@@ -402,11 +410,11 @@ docker run --rm -it \
   -e TARGET_PY="$JOB_PATH_CONT" \
   -v "$SDLF_DIR":/workspace:ro \
   -v "$RUN_TMP":/runner_tmp \
-  -v "/runner_tmp/log4j2.properties":/usr/lib/spark/conf/log4j2.properties:ro \
+  -v "$LOG4J2_PATH_HOST":/usr/lib/spark/conf/log4j2.properties:ro \
   -w /workspace \
   "$IMAGE" \
   spark-submit \
-    ${SPARK_ARGS[@]} \
+    "${SPARK_ARGS[@]}" \
     /runner_tmp/_bootstrap.py \
       --JOB_NAME "${JOB_NAME}" \
       --raw_bucket "${RAW_BUCKET}" \
