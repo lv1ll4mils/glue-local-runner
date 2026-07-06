@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+
 ############################################
 # Configuración editable (por defecto)
 ############################################
@@ -10,6 +11,7 @@ if [ -f ".env" ]; then
   source .env
   set +a
 fi
+
 
 ############################################
 # Convención de perfiles locales: local-<env> (local-dev|local-test|local-prod)
@@ -22,6 +24,7 @@ LAYER="${LAYER:-[layer_name]}"
 # Imagen local (ya construida desde amazon/aws-glue-libs:4.0.0)
 IMAGE="${IMAGE:-mi-glue-job:local}"
 
+
 ############################################
 # Utilidades de logging
 ############################################
@@ -33,12 +36,12 @@ require_bin() { command -v "$1" >/dev/null 2>&1 || die "No se encontró '$1' en 
 ensure_sso() {
   local cache_file=".last_aws_profile"
   local last_profile=""
-  
+
   # Leer último perfil usado
   if [ -f "$cache_file" ]; then
     last_profile="$(cat "$cache_file")"
   fi
-  
+
   # Si cambió el perfil, hacer logout del anterior
   if [ -n "$last_profile" ] && [ "$last_profile" != "$AWS_PROFILE" ]; then
     echo "Detectado cambio de perfil: '$last_profile' → '$AWS_PROFILE'"
@@ -55,7 +58,7 @@ ensure_sso() {
       aws sso login --profile "$AWS_PROFILE"
     fi
   fi
-  
+
   # Guardar perfil actual para próxima ejecución
   echo "$AWS_PROFILE" > "$cache_file"
 }
@@ -86,10 +89,10 @@ export_credentials_envfile() {
     # Exporta credenciales temporales y las guarda en un env-file seguro
     local envfile="$1"
     rm -f "$envfile"
-    
+
     # Limpiar credenciales previas del entorno
     unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-    
+
     # Añade REGION siempre
     {
         echo "AWS_REGION=${AWS_REGION}"
@@ -138,6 +141,7 @@ PYEOF
     export TARGET_PY="$target_py"
 }
 
+
 ############################################
 # Prechequeos de binarios y SSO
 ############################################
@@ -179,6 +183,7 @@ JOB_PATH="${SDLF_DIR}/${JOB_DIR}/${JOB_NAME}"
 TEMPLATE_PATH="${SDLF_DIR}/${JOB_DIR}/template.yaml"
 # Paths dentro del contenedor
 JOB_PATH_CONT="/workspace/${JOB_DIR}/${JOB_NAME}"
+
 
 ############################################
 # Defaults / overrides (key-values desde template.yaml)
