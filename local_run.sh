@@ -31,33 +31,13 @@ warn() { echo "WARN:  $*" >&2; }
 require_bin() { command -v "$1" >/dev/null 2>&1 || die "No se encontró '$1' en PATH"; }
 
 ensure_sso() {
-  local cache_file=".last_aws_profile"
-  local last_profile=""
-  
-  # Leer último perfil usado
-  if [ -f "$cache_file" ]; then
-    last_profile="$(cat "$cache_file")"
-  fi
-  
-  # Si cambió el perfil, hacer logout del anterior
-  if [ -n "$last_profile" ] && [ "$last_profile" != "$AWS_PROFILE" ]; then
-    echo "Detectado cambio de perfil: '$last_profile' → '$AWS_PROFILE'"
-    echo "Cerrando sesión del perfil anterior..."
-    aws sso logout --profile "$last_profile" 2>/dev/null || true
-    echo "Forzando login en el nuevo perfil..."
-    aws sso login --profile "$AWS_PROFILE"
+  # Evita re-login si el token SSO aún es válido
+  if aws sts get-caller-identity --profile "$AWS_PROFILE" >/dev/null 2>&1; then
+    echo "SSO OK para perfil '$AWS_PROFILE'."
   else
-    # Evita re-login si el token SSO aún es válido
-    if aws sts get-caller-identity --profile "$AWS_PROFILE" >/dev/null 2>&1; then
-      echo "SSO OK para perfil '$AWS_PROFILE'."
-    else
-      echo "SSO inválido/ausente. Ejecutando 'aws sso login --profile $AWS_PROFILE'..."
-      aws sso login --profile "$AWS_PROFILE"
-    fi
+    echo "SSO inválido/ausente. Ejecutando 'aws sso login --profile $AWS_PROFILE'..."
+    aws sso login --profile "$AWS_PROFILE"
   fi
-  
-  # Guardar perfil actual para próxima ejecución
-  echo "$AWS_PROFILE" > "$cache_file"
 }
 
 # Wrapper de yq: usa yq local o el contenedor mikefarah/yq
@@ -86,10 +66,6 @@ export_credentials_envfile() {
     # Exporta credenciales temporales y las guarda en un env-file seguro
     local envfile="$1"
     rm -f "$envfile"
-    
-    # Limpiar credenciales previas del entorno
-    unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN
-    
     # Añade REGION siempre
     {
         echo "AWS_REGION=${AWS_REGION}"
@@ -276,20 +252,6 @@ if [ -f "$TEMPLATE_PATH" ]; then
 
   TOKEN_AUTO="$( printf '%s' "$TOKEN_AUTO" | sed -e 's/^[[:space:]]\+//' -e 's/[[:space:]]\+$//' )"
 
-  # ---------------- ODATA_REF ----------------
-  ODATA_STR="$( yq_cmd -r '.. | select(has("DefaultArguments")) | .DefaultArguments["--odata_credentials"] // ""' "$TEMPLATE_PATH" | head -n1 )"
-  [ "$ODATA_STR" = "null" ] && ODATA_STR=""
-  ODATA_AUTO="$ODATA_STR"
-
-  ODATA_AUTO="$( printf '%s' "$ODATA_AUTO" | sed -e 's/^[[:space:]]\+//' -e 's/[[:space:]]\+$//' )"
-
-  # ---------------- ODATA_REF ----------------
-  DYANMO_STR="$( yq_cmd -r '.. | select(has("DefaultArguments")) | .DefaultArguments["--dynamo_table_results"] // ""' "$TEMPLATE_PATH" | head -n1 )"
-  [ "$DYANMO_STR" = "null" ] && DYANMO_STR=""
-  DYNAMO_AUTO="$DYANMO_STR"
-
-  DYNAMO_AUTO="$( printf '%s' "$DYNAMO_AUTO" | sed -e 's/^[[:space:]]\+//' -e 's/[[:space:]]\+$//' )"
-
 else
   warn "No se encontró template.yaml en $(dirname "$JOB_PATH"). Se usarán defaults/overrides."
 fi
@@ -314,7 +276,6 @@ DELIVERY_CATALOG_AN="${DELIVERY_CATALOG:-${DB_PREFIX}_${ENVIRONMENT}_delivery_an
 FINANCIAL_CATALOG_AN="${FINANCIAL_CATALOG:-${DB_PREFIX}_${ENVIRONMENT}_financial_analytics}"
 TERRITORIES_CATALOG_AN="${TERRITORIES_CATALOG:-${DB_PREFIX}_${ENVIRONMENT}_territories_analytics}"
 TALENT_CATALOG_AN="${TALENT_CATALOG:-${DB_PREFIX}_${ENVIRONMENT}_talent_analytics}"
-KNOWLEDGE_CATALOG_AN="${KNOWLEDGE_CATALOG:-${DB_PREFIX}_${ENVIRONMENT}_knowledge_analytics}"
 
 # Selector de bucket según LAYER
 resolve_layer_bucket() {
@@ -341,8 +302,6 @@ RANGE="${RANGE:-${RANGE_AUTO}}"
 SECRET="${SECRET:-${SECRET_AUTO}}"
 YEAR="${YEAR:-${YEAR_AUTO}}"
 TOKEN="${TOKEN:-${TOKEN_AUTO}}"
-ODATA="${ODATA:-${ODATA_AUTO}}"
-DYNAMO="${DYNAMO:-${DYNAMO_AUTO}}"
 JOB_NAME="${JOB_NAME:-${JOB_NAME}}"
 REGION="${REGION:-${AWS_REGION}}"
 
@@ -472,7 +431,6 @@ docker run --rm -it \
       --financial_analytics_database "${FINANCIAL_CATALOG_AN}" \
       --territories_analytics_database "${TERRITORIES_CATALOG_AN}" \
       --talent_analytics_database "${TALENT_CATALOG_AN}" \
-      --knowledge_analytics_database "${KNOWLEDGE_CATALOG_AN}" \
       --drive_folder_id "${FOLDER}" \
       --sheet_id "${SHEET}" \
       --worksheet_name "${WORKSHEET}" \
@@ -480,8 +438,4 @@ docker run --rm -it \
       --secret_name "${SECRET}" \
       --base_year "${YEAR}" \
       --region_name "${REGION}" \
-      --token_key "${TOKEN}" \
-      --odata_credentials "${ODATA}" \
-      --dynamo_table_results "great_expectations_results" \
-      --dynamo_table_config "great_expectations_config" \
-      --dynamo_table_catalog "great_expectations_catalog"
+      --token_key "${TOKEN}"
