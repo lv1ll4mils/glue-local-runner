@@ -5,7 +5,8 @@ RUN python3 -m pip install \
     google-auth-oauthlib \
     google-auth-httplib2 \
     fastparquet \
-    workalendar
+    workalendar \
+    holidays
 
 # Directorio de trabajo (donde se montará el proyecto local)
 WORKDIR /workspace
