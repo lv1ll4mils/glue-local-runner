@@ -3,6 +3,9 @@
 .env.*
 *.env
 
+# Cache de perfil AWS
+.last_aws_profile
+
 # Temporales
 .tmp/
 *.log
